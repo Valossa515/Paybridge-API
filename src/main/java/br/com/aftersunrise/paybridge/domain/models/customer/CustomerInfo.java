@@ -21,9 +21,9 @@ public class CustomerInfo extends DatabaseEntityBase implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private String name;
+    private String firstName;
+    private String lastName;
+    private String document;
     private String email;
     private String phone;
-    private String address;
-    private String documentNumber;
 }

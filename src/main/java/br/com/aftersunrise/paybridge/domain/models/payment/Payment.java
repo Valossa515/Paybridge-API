@@ -3,6 +3,7 @@ package br.com.aftersunrise.paybridge.domain.models.payment;
 
 import br.com.aftersunrise.paybridge.domain.models.DatabaseEntityBase;
 import br.com.aftersunrise.paybridge.domain.models.customer.CustomerInfo;
+import br.com.aftersunrise.paybridge.domain.models.notifications.Notification;
 import br.com.aftersunrise.paybridge.domain.models.payment.enums.PaymentMethod;
 import br.com.aftersunrise.paybridge.domain.models.payment.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -14,35 +15,47 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+@Entity
+@Table(name = "payment")
 @Data
 @SuperBuilder
-@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Table(name = "payment")
-@Builder
-@Entity
+@EqualsAndHashCode(callSuper = true)
 public class Payment extends DatabaseEntityBase implements Serializable {
+
     @Serial
     private static final long serialVersionUID = 1L;
 
     @Enumerated(EnumType.STRING)
-    private PaymentMethod method;
+    private PaymentMethod method; // PIX, CREDIT_CARD etc.
 
-    private BigDecimal amount;
+    private BigDecimal amount;    // value
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
 
-    private String description;
+    private String description;   // softDescriptor
+    private String referenceId;   // referência única do pagamento no provedor
+    private String callbackUrl;   // callback para notificação
+    private String returnUrl;     // URL para retorno pós-pagamento
+    private String leaveUrl;      // URL caso o cliente desista
+    private String channel;       // "my-channel"
+    private String purchaseMode;  // "in-store" ou "online"
 
     @Embedded
     private CustomerInfo customer;
+
+    @Embedded
+    private Notification notification;
+
+    private Boolean autoCapture;  // auto captura do pagamento
 
     private Instant createdAt;
     private Instant updatedAt;
     private Instant confirmedAt;
     private Instant cancelledAt;
+    private Instant expiresAt;
 
     public void markAsConfirmed() {
         this.status = PaymentStatus.CONFIRMED;
