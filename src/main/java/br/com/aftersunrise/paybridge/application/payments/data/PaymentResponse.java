@@ -12,7 +12,7 @@ import java.time.Instant;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class PaymentResponse {
     private String referenceId;      // referência interna / no provedor
     private PaymentStatus status;    // status padronizado (CONFIRMED, PENDING, FAILED, REFUNDED)

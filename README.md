@@ -2,11 +2,11 @@
 
 ## 🎯 Objetivo
 
-API agnóstica de pagamentos que unifica chamadas a provedores externos (inicialmente **PicPay** — adapter v2). O objetivo deste PoC é prover um contrato único para criação/consulta/captura/reembolso de pagamentos, encapsulando diferenças de cada gateway através de adaptadores.
+API agnóstica de pagamentos que unifica chamadas a provedores externos (inicialmente **PicPay** — adapter v2) e um provedor **mock** embutido para testes locais. O objetivo deste PoC é prover um contrato único para criação/consulta/captura/reembolso de pagamentos, encapsulando diferenças de cada gateway através de adaptadores.
 
 ## 🧩 Funcionalidades (PoC)
 
-* `POST /payments` — cria um pagamento no provedor selecionado (ex.: PicPay) e persiste a entidade `Payment` local.
+* `POST /payments` — cria um pagamento no provedor selecionado (ex.: PicPay ou mock) e persiste a entidade `Payment` local.
 * `GET /payments/{referenceId}/status` — consulta o status do pagamento (unificado).
 * `POST /payments/{referenceId}/capture` — captura total/parcial (quando aplicável).
 * `POST /payments/{referenceId}/refunds` — reembolso parcial ou total.
@@ -16,7 +16,7 @@ API agnóstica de pagamentos que unifica chamadas a provedores externos (inicial
 
 1. Cliente envia payload unificado para `/payments`.
 2. API valida e mapeia para a entidade interna `Payment` (adapter).
-3. `PaymentProviderGateway` selecionado (ex.: `PicPayGateway`) realiza a chamada externa.
+3. `PaymentProviderGateway` selecionado (ex.: `PicPayGateway` ou `MockPaymentGateway`) realiza a chamada externa.
 4. Resposta do provedor é normalizada para `PaymentResponse` via mapper (`PicPayMapper`).
 5. Entidade `Payment` é atualizada e salva no repositório local.
 6. Notificações/Callbacks são recebidas em `/webhook/*` e resultam em chamadas de confirmação/atualização (GET status no provedor).
@@ -24,7 +24,8 @@ API agnóstica de pagamentos que unifica chamadas a provedores externos (inicial
 ## 🧱 Arquitetura e componentes
 
 * **Contract/DTOs**: `Payment`, `PaymentResponse`, `CreatePaymentCommand`.
-* **Gateway/Adapter Pattern**: `PaymentProviderGateway` (interface) + `PicPayGateway` (implementação).
+* **Gateway/Adapter Pattern**: `PaymentProviderGateway` (interface) + `PicPayGateway` / `MockPaymentGateway` (implementações).
+* **Resolver de provedores**: seleciona dinamicamente o gateway de pagamento com base no payload (ou usa o padrão configurado).
 * **OAuthService**: gerencia token (cache e refresh simples) para PicPay.
 * **Mapper**: `PicPayMapper` — converte resposta do provedor para `PaymentResponse`.
 * **Adapter local**: `IPaymentAdapter` para mapear comando → entidade.
@@ -47,6 +48,9 @@ picpay.oauth.token-url = https://api.picpay.com/ecommerce/v2/oauth2/token
 picpay.oauth.client-id = YOUR_CLIENT_ID
 picpay.oauth.client-secret = YOUR_CLIENT_SECRET
 picpay.base-url = https://api.picpay.com/ecommerce/v2
+
+# Provedor padrão (mock por padrão para desenvolvimento)
+payment.default-provider=mock
 
 # Datasource (exemplo H2)
 spring.datasource.url=jdbc:h2:mem:app;DB_CLOSE_DELAY=-1
@@ -73,7 +77,7 @@ spring.jpa.hibernate.ddl-auto=update
     "email": "teste@teste.com",
     "phone": "+55 27 12345-6789"
   },
-  "provider": "picpay"
+  "provider": "mock"
 }
 ```
 
@@ -83,16 +87,16 @@ spring.jpa.hibernate.ddl-auto=update
 {
   "referenceId": "102030",
   "status": "PENDING",
-  "provider": "picpay",
-  "paymentUrl": "https://checkout.picpay.com/..",
-  "qrCode": "000201...",
+  "provider": "mock",
+  "paymentUrl": "https://mock.paybridge.local/checkout/..",
+  "qrCode": "000201MOCK102030",
   "amount": 20.51
 }
 ```
 
 ## ▶️ Como rodar localmente
 
-1. Preencher `application.properties` com `picpay.oauth.client-id` e `client-secret` (ou usar valores mock).
+1. (Opcional) Preencher `application.properties` com `picpay.oauth.client-id` e `client-secret` quando utilizar PicPay. Para testes locais, o provedor `mock` já é o padrão e não exige credenciais.
 2. `mvn clean install`
 3. `mvn spring-boot:run`
 4. Testar endpoints via Postman / Insomnia.

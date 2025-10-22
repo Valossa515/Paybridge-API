@@ -18,6 +18,7 @@ public class PaymentAdapter implements IPaymentAdapter {
                 .leaveUrl(command.leaveUrl())
                 .channel(command.channel())
                 .purchaseMode(command.purchaseMode())
+                .provider(command.provider())
                 .customer(command.customer())
                 .autoCapture(true) // por padrão
                 .build();

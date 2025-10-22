@@ -13,5 +13,6 @@ public record CreatePaymentCommand(
         String leaveUrl,
         String channel,
         String purchaseMode,
+        String provider,
         CustomerInfo customer
 ) implements ICommand<CreatePaymentResponse> {}
