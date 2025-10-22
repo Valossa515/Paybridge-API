@@ -37,6 +37,7 @@ public class Payment extends DatabaseEntityBase implements Serializable {
 
     private String description;   // softDescriptor
     private String referenceId;   // referência única do pagamento no provedor
+    private String provider;      // provedor responsável (picpay, mock...)
     private String callbackUrl;   // callback para notificação
     private String returnUrl;     // URL para retorno pós-pagamento
     private String leaveUrl;      // URL caso o cliente desista

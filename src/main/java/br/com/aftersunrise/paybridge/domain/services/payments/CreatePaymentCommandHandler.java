@@ -4,11 +4,11 @@ import br.com.aftersunrise.paybridge.application.abstractions.data.HandlerRespon
 import br.com.aftersunrise.paybridge.application.abstractions.handlers.CommandHandlerBase;
 import br.com.aftersunrise.paybridge.application.abstractions.interfaces.ICreatePaymentHandler;
 import br.com.aftersunrise.paybridge.application.abstractions.interfaces.IPaymentAdapter;
-import br.com.aftersunrise.paybridge.application.abstractions.interfaces.PaymentProviderGateway;
 import br.com.aftersunrise.paybridge.application.abstractions.models.BusinessException;
 import br.com.aftersunrise.paybridge.application.payments.data.CreatePaymentCommand;
 import br.com.aftersunrise.paybridge.application.payments.data.CreatePaymentResponse;
 import br.com.aftersunrise.paybridge.application.payments.data.PaymentResponse;
+import br.com.aftersunrise.paybridge.application.payments.gateways.PaymentProviderResolver;
 import br.com.aftersunrise.paybridge.domain.models.payment.Payment;
 import br.com.aftersunrise.paybridge.domain.models.payment.enums.PaymentStatus;
 import br.com.aftersunrise.paybridge.infrastructure.repositories.PaymentRepository;
@@ -28,17 +28,17 @@ public class CreatePaymentCommandHandler extends CommandHandlerBase<CreatePaymen
     private static final Logger logger = LoggerFactory.getLogger(CreatePaymentCommandHandler.class);
 
     private final PaymentRepository paymentRepository;
-    private final PaymentProviderGateway paymentGateway;
+    private final PaymentProviderResolver paymentProviderResolver;
     private final IPaymentAdapter paymentAdapter;
 
     public CreatePaymentCommandHandler(
             Validator validator,
             PaymentRepository paymentRepository,
-            PaymentProviderGateway paymentGateway,
+            PaymentProviderResolver paymentProviderResolver,
             IPaymentAdapter paymentAdapter) {
         super(logger, validator);
         this.paymentRepository = paymentRepository;
-        this.paymentGateway = paymentGateway;
+        this.paymentProviderResolver = paymentProviderResolver;
         this.paymentAdapter = paymentAdapter;
     }
 
@@ -50,15 +50,21 @@ public class CreatePaymentCommandHandler extends CommandHandlerBase<CreatePaymen
            try{
                // 1. Monta entidade Payment a partir do command
                Payment payment = paymentAdapter.toPayment(request);
+               var gateway = paymentProviderResolver.resolve(payment.getProvider());
+               payment.setProvider(gateway.getProviderId());
                payment.setStatus(PaymentStatus.PENDING);
                payment.setCreatedAt(Instant.now());
 
                // 2. Cria pagamento no provedor (PicPay)
-               PaymentResponse providerResponse = paymentGateway.createPayment(payment);
+               PaymentResponse providerResponse = gateway.createPayment(payment);
 
                // 3. Atualiza entidade local com dados do provedor
                payment.setReferenceId(providerResponse.getReferenceId());
                payment.setStatus(providerResponse.getStatus());
+               String resolvedProvider = providerResponse.getProvider() != null
+                       ? providerResponse.getProvider()
+                       : gateway.getProviderId();
+               payment.setProvider(resolvedProvider);
                payment.setUpdatedAt(Instant.now());
 
                // 4. Persiste no banco
@@ -68,6 +74,7 @@ public class CreatePaymentCommandHandler extends CommandHandlerBase<CreatePaymen
                CreatePaymentResponse result = new CreatePaymentResponse(
                        saved.getReferenceId(),
                        saved.getStatus(),
+                       saved.getProvider(),
                        providerResponse.getPaymentUrl(),
                        providerResponse.getQrCode(),
                        providerResponse.getQrCodeBase64()

@@ -5,6 +5,7 @@ import br.com.aftersunrise.paybridge.domain.models.payment.enums.PaymentStatus;
 public record CreatePaymentResponse(
         String referenceId,
         PaymentStatus status,
+        String provider,
         String paymentUrl,
         String qrCode,
         String qrCodeBase64

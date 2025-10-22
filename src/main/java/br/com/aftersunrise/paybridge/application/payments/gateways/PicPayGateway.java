@@ -14,11 +14,14 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Map;
 
 @Component
 @Slf4j
 public class PicPayGateway implements PaymentProviderGateway {
+
+    public static final String PROVIDER_ID = "picpay";
 
     private final RestTemplate restTemplate;
     private final OAuthService oauthService;
@@ -35,6 +38,11 @@ public class PicPayGateway implements PaymentProviderGateway {
         headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
+    }
+
+    @Override
+    public String getProviderId() {
+        return PROVIDER_ID;
     }
 
     // ------------------------------
@@ -56,7 +64,13 @@ public class PicPayGateway implements PaymentProviderGateway {
                 throw new PaymentProviderException("PicPay retornou body nulo ao criar pagamento.");
             }
 
-            return PicPayMapper.toPaymentResponse(resp.getBody());
+            PaymentResponse response = PicPayMapper.toPaymentResponse(resp.getBody());
+            response.setProvider(PROVIDER_ID);
+            response.setAmount(payment.getAmount());
+            response.setDescription(payment.getDescription());
+            response.setCreatedAt(Instant.now());
+            response.setUpdatedAt(Instant.now());
+            return response;
 
         } catch (RestClientException ex) {
             log.error("Erro ao criar pagamento no PicPay: {}", ex.getMessage(), ex);
@@ -81,7 +95,10 @@ public class PicPayGateway implements PaymentProviderGateway {
                 throw new PaymentProviderException("PicPay retornou body nulo ao capturar pagamento.");
             }
 
-            return PicPayMapper.toPaymentResponse(resp.getBody());
+            PaymentResponse response = PicPayMapper.toPaymentResponse(resp.getBody());
+            response.setProvider(PROVIDER_ID);
+            response.setUpdatedAt(Instant.now());
+            return response;
 
         } catch (RestClientException ex) {
             log.error("Erro ao capturar pagamento no PicPay: {}", ex.getMessage(), ex);
@@ -108,7 +125,10 @@ public class PicPayGateway implements PaymentProviderGateway {
                 throw new PaymentProviderException("PicPay retornou body nulo ao reembolsar pagamento.");
             }
 
-            return PicPayMapper.toPaymentResponse(resp.getBody());
+            PaymentResponse response = PicPayMapper.toPaymentResponse(resp.getBody());
+            response.setProvider(PROVIDER_ID);
+            response.setUpdatedAt(Instant.now());
+            return response;
 
         } catch (RestClientException ex) {
             log.error("Erro ao reembolsar pagamento no PicPay: {}", ex.getMessage(), ex);

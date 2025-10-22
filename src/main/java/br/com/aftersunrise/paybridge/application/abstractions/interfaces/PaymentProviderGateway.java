@@ -8,6 +8,12 @@ import br.com.aftersunrise.paybridge.domain.models.payment.enums.PaymentStatus;
 import java.math.BigDecimal;
 
 public interface PaymentProviderGateway {
+    /**
+     * Identifier used to map requests to a specific provider implementation
+     * (e.g. {@code picpay}, {@code mock}).
+     */
+    String getProviderId();
+
     PaymentResponse createPayment(Payment payment);
     PaymentResponse capturePayment(String referenceId);
     PaymentResponse refundPayment(String referenceId, BigDecimal amount);
