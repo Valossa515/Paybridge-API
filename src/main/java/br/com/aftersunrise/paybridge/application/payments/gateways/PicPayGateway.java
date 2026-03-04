@@ -6,8 +6,8 @@ import br.com.aftersunrise.paybridge.application.payments.adapters.PicPayMapper;
 import br.com.aftersunrise.paybridge.application.payments.data.*;
 import br.com.aftersunrise.paybridge.domain.models.payment.Payment;
 import br.com.aftersunrise.paybridge.domain.models.payment.enums.PaymentStatus;
-import br.com.aftersunrise.paybridge.domain.services.payments.OAuthService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
@@ -22,21 +22,22 @@ import java.util.Map;
 public class PicPayGateway implements PaymentProviderGateway {
 
     public static final String PROVIDER_ID = "picpay";
+    private static final String BASE_URL = "https://appws.picpay.com/ecommerce/public";
 
     private final RestTemplate restTemplate;
-    private final OAuthService oauthService;
-    private final String baseUrl = "https://api.picpay.com/ecommerce/v2";
+    private final String picPayToken;
 
-    public PicPayGateway(RestTemplate restTemplate, OAuthService oauthService) {
+    public PicPayGateway(
+            RestTemplate restTemplate,
+            @Value("${picpay.x-picpay-token}") String picPayToken) {
         this.restTemplate = restTemplate;
-        this.oauthService = oauthService;
+        this.picPayToken = picPayToken;
     }
 
     private HttpHeaders authHeaders() {
-        String token = oauthService.getAccessToken();
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-picpay-token", picPayToken);
         return headers;
     }
 
@@ -55,7 +56,7 @@ public class PicPayGateway implements PaymentProviderGateway {
                     new HttpEntity<>(PicPayPaymentRequest.from(payment), authHeaders());
 
             ResponseEntity<PicPayPaymentResponse> resp = restTemplate.postForEntity(
-                    baseUrl + "/payments",
+                    BASE_URL + "/payments",
                     req,
                     PicPayPaymentResponse.class
             );
@@ -79,50 +80,31 @@ public class PicPayGateway implements PaymentProviderGateway {
     }
 
     // ------------------------------
-    // Captura de pagamento
+    // Captura de pagamento (não suportado pelo PicPay — pagamentos são assíncronos)
     // ------------------------------
     @Override
     public PaymentResponse capturePayment(String referenceId) {
-        try {
-            HttpEntity<Void> req = new HttpEntity<>(authHeaders());
-            ResponseEntity<PicPayPaymentResponse> resp = restTemplate.postForEntity(
-                    baseUrl + "/payments/" + referenceId + "/capture",
-                    req,
-                    PicPayPaymentResponse.class
-            );
-
-            if (resp.getBody() == null) {
-                throw new PaymentProviderException("PicPay retornou body nulo ao capturar pagamento.");
-            }
-
-            PaymentResponse response = PicPayMapper.toPaymentResponse(resp.getBody());
-            response.setProvider(PROVIDER_ID);
-            response.setUpdatedAt(Instant.now());
-            return response;
-
-        } catch (RestClientException ex) {
-            log.error("Erro ao capturar pagamento no PicPay: {}", ex.getMessage(), ex);
-            throw new PaymentProviderException("Erro ao capturar pagamento no PicPay", ex);
-        }
+        throw new UnsupportedOperationException(
+                "PicPay não suporta captura manual. Pagamentos são confirmados de forma assíncrona via callback.");
     }
 
     // ------------------------------
-    // Reembolso / cancelamento
+    // Cancelamento / reembolso
     // ------------------------------
     @Override
     public PaymentResponse refundPayment(String referenceId, BigDecimal amount) {
         try {
             HttpEntity<Map<String, Object>> req =
-                    new HttpEntity<>(Map.of("value", amount), authHeaders());
+                    new HttpEntity<>(Map.of("authorizationId", referenceId), authHeaders());
 
             ResponseEntity<PicPayPaymentResponse> resp = restTemplate.postForEntity(
-                    baseUrl + "/payments/" + referenceId + "/refunds",
+                    BASE_URL + "/payments/" + referenceId + "/cancellations",
                     req,
                     PicPayPaymentResponse.class
             );
 
             if (resp.getBody() == null) {
-                throw new PaymentProviderException("PicPay retornou body nulo ao reembolsar pagamento.");
+                throw new PaymentProviderException("PicPay retornou body nulo ao cancelar pagamento.");
             }
 
             PaymentResponse response = PicPayMapper.toPaymentResponse(resp.getBody());
@@ -131,8 +113,8 @@ public class PicPayGateway implements PaymentProviderGateway {
             return response;
 
         } catch (RestClientException ex) {
-            log.error("Erro ao reembolsar pagamento no PicPay: {}", ex.getMessage(), ex);
-            throw new PaymentProviderException("Erro ao reembolsar pagamento no PicPay", ex);
+            log.error("Erro ao cancelar pagamento no PicPay: {}", ex.getMessage(), ex);
+            throw new PaymentProviderException("Erro ao cancelar pagamento no PicPay", ex);
         }
     }
 
@@ -145,7 +127,7 @@ public class PicPayGateway implements PaymentProviderGateway {
             HttpEntity<Void> req = new HttpEntity<>(authHeaders());
 
             ResponseEntity<PicPayStatusResponse> resp = restTemplate.exchange(
-                    baseUrl + "/payments/" + referenceId + "/status",
+                    BASE_URL + "/payments/" + referenceId + "/status",
                     HttpMethod.GET,
                     req,
                     PicPayStatusResponse.class
@@ -170,9 +152,6 @@ public class PicPayGateway implements PaymentProviderGateway {
         try {
             String referenceId = notif.getReferenceId();
             PaymentStatus status = getPaymentStatus(referenceId);
-
-            // Aqui você chamaria seu PaymentService para atualizar a entidade
-            // paymentService.updatePaymentStatus(referenceId, status);
 
             log.info("Callback PicPay processado. referenceId={} status={}", referenceId, status);
 
