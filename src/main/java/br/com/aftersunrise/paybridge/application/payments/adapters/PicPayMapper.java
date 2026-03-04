@@ -18,11 +18,15 @@ public class PicPayMapper {
     }
 
     public static PaymentStatus toPaymentStatus(String picPayStatus) {
+        if (picPayStatus == null) {
+            return PaymentStatus.PENDING;
+        }
         return switch (picPayStatus.toLowerCase()) {
+            case "created", "pending" -> PaymentStatus.PENDING;
             case "paid" -> PaymentStatus.CONFIRMED;
             case "expired" -> PaymentStatus.FAILED;
             case "refunded" -> PaymentStatus.REFUNDED;
-            case "pending" -> PaymentStatus.PENDING;
+            case "analysis" -> PaymentStatus.PENDING;
             default -> PaymentStatus.FAILED;
         };
     }

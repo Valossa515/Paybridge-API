@@ -9,9 +9,9 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @SpringBootApplication
 @ComponentScan(basePackages = "br.com.aftersunrise.paybridge")
 @EnableJpaRepositories(basePackages = "br.com.aftersunrise.paybridge.infrastructure.repositories")
-@EntityScan(basePackages = "br.com.aftersunrise.paybridge.domain.model")
+@EntityScan(basePackages = "br.com.aftersunrise.paybridge.domain.models")
 public class Application {
-	static void main(String[] args) {
+	public static void main(String[] args) {
 		SpringApplication.run(Application.class, args);
 	}
 }

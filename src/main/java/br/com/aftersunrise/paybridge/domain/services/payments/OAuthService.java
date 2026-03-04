@@ -29,9 +29,9 @@ public class OAuthService {
     private Instant tokenExpiresAt;
 
     public OAuthService(RestTemplate restTemplate,
-                        @Value("${picpay.oauth.token-url}") String tokenUrl,
-                        @Value("${picpay.oauth.client-id}") String clientId,
-                        @Value("${picpay.oauth.client-secret}") String clientSecret) {
+                        @Value("${oauth.token-url:}") String tokenUrl,
+                        @Value("${oauth.client-id:}") String clientId,
+                        @Value("${oauth.client-secret:}") String clientSecret) {
         this.restTemplate = restTemplate;
         this.tokenUrl = tokenUrl;
         this.clientId = clientId;

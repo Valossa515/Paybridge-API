@@ -1,23 +1,17 @@
 package br.com.aftersunrise.paybridge.domain.models.customer;
 
-import br.com.aftersunrise.paybridge.domain.models.DatabaseEntityBase;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.Embeddable;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
 import java.io.Serializable;
 
+@Embeddable
 @Data
-@SuperBuilder
-@EqualsAndHashCode(callSuper = true)
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "customer_info")
-@Builder
-@Entity
-public class CustomerInfo extends DatabaseEntityBase implements Serializable {
+public class CustomerInfo implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
